@@ -12,9 +12,10 @@ Main features:
 ```bash
 $ echo hello world > someFile
 $ head < someFile
-$ cat myFile | head -n 100 | tail -n10 #gives me lines 90-100 of myFile
+$ cat myFile | head -n 100 | tail -n 10 #gives me lines 90-100 of myFile
 $ cd ~
 $ ./startMyWebServer& #start the webserver, but give me my shell back!
 $ $MYVAR=something
 $ echo $MYVAR
+$ exit
 ```

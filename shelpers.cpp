@@ -105,8 +105,24 @@ std::vector<Command> getCommands(const std::vector<std::string>& tokens){
 		  (all others get input from a pipe)
 		  Only the LAST command can have output redirection!
 		 */
-		assert(false);
-		
+		if(tokens[j] == ">"){
+			if(j + 1 >= last){
+				std::cerr << "enter the file name" << std::endl;
+				exit(1);
+			} 
+			ret[i].fdStdout = open(tokens[j + 1].c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+			if(ret[i].fdStdout  < 0) std::cerr << "fail to open file" << std::endl;
+			break;
+		} else {
+			if(j + 1 >= last){
+				std::cerr << "enter the file name" << std::endl;
+				exit(1);
+			} 
+			ret[i].fdStdin = open(tokens[j + 1].c_str(), O_RDONLY);
+			if(ret[i].fdStdin  < 0) std::cerr << "fail to open file" << std::endl;
+			break;
+		}	
+
 	  } else if(tokens[j] == "&"){
 		//Fill this in if you choose to do the optional "background command" part
 		assert(false);
