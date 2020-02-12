@@ -2,11 +2,6 @@
 A simple unix shell practice  
 Written in c++.
 
-Usage:  
-1. Enter ```./build```
-2. Compile: ```make```
-3. Run the shell: ```make run``` 
-
 Main features:
 1. run program
 2. redirection
