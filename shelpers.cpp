@@ -92,9 +92,7 @@ std::vector<Command> getCommands(const std::vector<std::string>& tokens) {
       error = true;
       break;
     }
-
     ret[i].exec = tokens[first];
-
     ret[i].argv.push_back(tokens[first].c_str());  // argv0 = program name
     std::cout << "exec start: " << ret[i].exec << std::endl;
     ret[i].fdStdin = 0;
@@ -135,8 +133,9 @@ std::vector<Command> getCommands(const std::vector<std::string>& tokens) {
         // part
         assert(false);
       } else {
+        // Implement echo $ENVIRONMENT
         // otherwise this is a normal command line argument!
-        ret[i].argv.push_back(tokens[j].c_str());
+        ret[i].argv.push_back(tokens[j][0] != '$' ? tokens[j].c_str() : getenv(tokens[j].substr(1).c_str()));
       }
     }
     if (i > 0) {
@@ -148,7 +147,6 @@ std::vector<Command> getCommands(const std::vector<std::string>& tokens) {
         std::cerr << "create pipe failed" << std::endl;
         exit(1);
       }
-	  
     }
     // exec wants argv to have a nullptr at the end!
     ret[i].argv.push_back(nullptr);

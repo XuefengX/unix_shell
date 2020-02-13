@@ -28,6 +28,10 @@ int main(int argc, const char *argv[]) {
       std::cout << cwd << std::endl;
       std::cout << "$ ";
       continue;
+    }else if(cla.find("=") != std::string::npos){
+      std::cout << "find env" << std::endl;
+      std::cout << "$ ";
+      continue;
     }
     std::vector<Command> cmds = getCommands(cls_tokens);
     int rc = getpid();
@@ -41,15 +45,13 @@ int main(int argc, const char *argv[]) {
       } else if (rc == 0) {
         pids[index] = getpid();
         std::cout << "child program PID: " << getpid() << "\n" << std::endl;
-        for (int i = 0; i < cmds.size(); i++) {
-          // with no pipe
-          dup2(cmd.fdStdin, 0);
-          dup2(cmd.fdStdout, 1);
-          int err = execvp(cmd.argv[0],
-                           const_cast<char *const *>(cmd.argv.data()));
-          std::cerr << "ERROR CODE: " << err << std::endl;
-          exit(0);
-        }
+        // with no pipe
+        dup2(cmd.fdStdin, 0);
+        dup2(cmd.fdStdout, 1);
+        int err =
+            execvp(cmd.argv[0], const_cast<char *const *>(cmd.argv.data()));
+        std::cerr << "ERROR CODE: " << err << std::endl;
+        exit(0);
       }
     }
     if (rc > 0) {
