@@ -7,29 +7,31 @@
  */
 
 #include "shell.hpp"
+#include <readline/readline.h>
+#include <readline/history.h>
 
 Shell::Shell(){
     this->shell_pid = getpid();
 }
 
 int Shell::run() {
-  std::string cla;
+  char * buffer;
   std::cout << "shell runs at PID: " << shell_pid << std::endl;
-  std::cout << "$ ";
-  while (getline(std::cin, cla)) {
+  // Auto completion
+  while ((buffer = readline("$ "))) {
+    std::string cla(buffer);
     std::vector<std::string> cla_tokens = tokenize(cla);
     if (builtins(cla_tokens)) continue;
     std::vector<Command> cmds = getCommands(cla_tokens);
-    int rc = getpid();
-    pid_t pids[cmds.size()];
+    std::vector<pid_t> pids(cmds.size());
     for (int index = 0; index < cmds.size(); index++) {
       Command cmd = cmds[index];
-      rc = fork();
-      if (rc < 0) {
+      pids[index] = fork();
+      // Child program started
+      if (pids[index] < 0) {
         std::cerr << "fork failed" << std::endl;
         exit(1);
-      } else if (rc == 0) {
-        pids[index] = getpid();
+      } else if (pids[index] == 0) {
         std::cout << "child program PID: " << getpid() << "\n" << std::endl;
         // with no pipe
         dup2(cmd.fdStdin, 0);
@@ -40,16 +42,38 @@ int Shell::run() {
         exit(0);
       }
     }
-    if (rc > 0) {
+    if (pids[0] > 0) {
+      // Check foreground apps
       for (int index = 0; index < cmds.size(); index++) {
-        int rc_wait = waitpid(rc, nullptr, 0);
-        std::cout << "\nparent: " << getpid()
+        if(!cmds[index].background){
+          int rc_wait = waitpid(pids[index], nullptr, 0);
+          std::cout << "\nparent: " << getpid()
                   << " finish executing program PID: " << rc_wait << std::endl;
-        std::cout << "$ ";
+        }else{
+          // Store background app's pid
+          if(background_apps.find(pids[index]) == background_apps.end())
+            background_apps.insert(pids[index]);
+        }
+      }
+      // Check background apps
+      for (std::set<pid_t>::iterator itr = background_apps.begin(); itr != background_apps.end(); ) {
+        int status;
+        pid_t zombie = waitpid(*itr, &status, WNOHANG);
+        if (zombie == *itr) {
+          std::cout << "program finished: " << *itr << std::endl;
+          std::set<pid_t>::iterator to_be_delete = itr++;
+          background_apps.erase(to_be_delete);
+        } else if (zombie == 0){
+          std::cout << "still running on background: " << *itr << std::endl;
+          itr++;
+        } else{
+          std::cout << "wrong" << *itr << std::endl;
+          itr++;
+        } 
       }
     }
   }
-  return 1;
+  return 0;
 }
 
 bool Shell::builtins(std::vector<std::string> cla_tokens) {
@@ -62,19 +86,17 @@ bool Shell::builtins(std::vector<std::string> cla_tokens) {
             ? cla_tokens[1] == "~" ? getenv("HOME") : cla_tokens[1].c_str()
             : getenv("HOME");
     if (chdir(path) == -1) std::cerr << "change directory failed" << std::endl;
-    std::cout << "$ ";
   } else if (cla_tokens[0] == "pwd") {
     char cwd[1024];
     getcwd(cwd, sizeof(cwd));
     std::cout << cwd << std::endl;
-    std::cout << "$ ";
   } else if (cla_tokens[0].find("=") != std::string::npos) {
+    // Set environment variables
     size_t pos = cla_tokens[0].find("=");
     std::string environment_variable = cla_tokens[0].substr(0, pos);
     std::string value = cla_tokens[0].substr(pos + 1);
     if (setenv(environment_variable.c_str(), value.c_str(), 1) == -1)
       std::cerr << "cannot set environment variable" << std::endl;
-    std::cout << "$ ";
   } else {
     has_builtin = false;
   }

@@ -129,9 +129,7 @@ std::vector<Command> getCommands(const std::vector<std::string>& tokens) {
         }
 
       } else if (tokens[j] == "&") {
-        // Fill this in if you choose to do the optional "background command"
-        // part
-        assert(false);
+        ret[i].background = true;
       } else {
         // Implement echo $ENVIRONMENT
         // otherwise this is a normal command line argument!
