@@ -18,22 +18,30 @@ int Shell::run() {
   char * buffer;
   std::cout << "shell runs at PID: " << shell_pid << std::endl;
   // Auto completion
-  while ((buffer = readline("$ "))) {
+  while ((buffer = readline("↖(^ω^)↗ "))) {
     std::string cla(buffer);
     std::vector<std::string> cla_tokens = tokenize(cla);
+    // run builtins
     if (builtins(cla_tokens)) continue;
     std::vector<Command> cmds = getCommands(cla_tokens);
     std::vector<pid_t> pids(cmds.size());
+    
+    // run each child
     for (int index = 0; index < cmds.size(); index++) {
       Command cmd = cmds[index];
       pids[index] = fork();
-      // Child program started
       if (pids[index] < 0) {
         std::cerr << "fork failed" << std::endl;
         exit(1);
       } else if (pids[index] == 0) {
-        std::cout << "child program PID: " << getpid() << "\n" << std::endl;
-        // with no pipe
+        std::cout << "child program PID: " << getpid() << std::endl;
+        for (int j = 0; j < cmds.size(); j++) {
+          std::cout << cmds[j].argv[0] << std::endl;
+          if (j != index) {
+            close(cmds[j].fdStdout);
+            close(cmds[j].fdStdin);
+          }
+        }
         dup2(cmd.fdStdin, 0);
         dup2(cmd.fdStdout, 1);
         int err =
@@ -42,35 +50,10 @@ int Shell::run() {
         exit(0);
       }
     }
+    // shell runs:
     if (pids[0] > 0) {
-      // Check foreground apps
-      for (int index = 0; index < cmds.size(); index++) {
-        if(!cmds[index].background){
-          int rc_wait = waitpid(pids[index], nullptr, 0);
-          std::cout << "\nparent: " << getpid()
-                  << " finish executing program PID: " << rc_wait << std::endl;
-        }else{
-          // Store background app's pid
-          if(background_apps.find(pids[index]) == background_apps.end())
-            background_apps.insert(pids[index]);
-        }
-      }
-      // Check background apps
-      for (std::set<pid_t>::iterator itr = background_apps.begin(); itr != background_apps.end(); ) {
-        int status;
-        pid_t zombie = waitpid(*itr, &status, WNOHANG);
-        if (zombie == *itr) {
-          std::cout << "program finished: " << *itr << std::endl;
-          std::set<pid_t>::iterator to_be_delete = itr++;
-          background_apps.erase(to_be_delete);
-        } else if (zombie == 0){
-          std::cout << "still running on background: " << *itr << std::endl;
-          itr++;
-        } else{
-          std::cout << "wrong" << *itr << std::endl;
-          itr++;
-        } 
-      }
+      wait_for_foreground_app(cmds, pids);
+      check_status_of_background_app();
     }
   }
   return 0;
@@ -105,4 +88,43 @@ bool Shell::builtins(std::vector<std::string> cla_tokens) {
 
 pid_t Shell::get_shell_pid(){
     return shell_pid;
+}
+
+void Shell::wait_for_foreground_app(std::vector<Command> cmds, std::vector<pid_t> pids) {
+  // Check foreground apps
+  for (int index = 0; index < cmds.size(); index++) {
+    if (!cmds[index].background) {
+      int rc_wait = waitpid(pids[index], nullptr, 0);
+      if (cmds[index].fdStdin != 0)
+        close(cmds[index].fdStdin);
+      if (cmds[index].fdStdout != 1) 
+        close(cmds[index].fdStdout);
+      std::cout << "\nparent: " << getpid()
+                << " finish executing program PID: " << rc_wait << std::endl;
+    } else {
+      // Store background app's pid
+      if (background_apps.find(pids[index]) == background_apps.end())
+        background_apps.insert(pids[index]);
+    }
+  }
+}
+
+void Shell::check_status_of_background_app() {
+  // Check background apps
+  for (std::set<pid_t>::iterator itr = background_apps.begin();
+       itr != background_apps.end();) {
+    int status;
+    pid_t zombie = waitpid(*itr, &status, WNOHANG);
+    if (zombie == *itr) {
+      std::cout << "program finished: " << *itr << std::endl;
+      std::set<pid_t>::iterator to_be_delete = itr++;
+      background_apps.erase(to_be_delete);
+    } else if (zombie == 0) {
+      std::cout << "still running on background: " << *itr << std::endl;
+      itr++;
+    } else {
+      std::cout << "wrong" << *itr << std::endl;
+      itr++;
+    }
+  }
 }

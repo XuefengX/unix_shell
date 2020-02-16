@@ -140,11 +140,14 @@ std::vector<Command> getCommands(const std::vector<std::string>& tokens) {
       /* there are multiple commands.  Open open a pipe and
              Connect the ends to the fds for the commands!
       */
-      int fildes[2];
-      if (pipe(fildes) < 0) {
+      // Set pipe
+      int fd[2];
+      if (pipe(fd) < 0) {
         std::cerr << "create pipe failed" << std::endl;
         exit(1);
       }
+      ret[i].fdStdin = fd[0];
+      ret[i - 1].fdStdout = fd[1];
     }
     // exec wants argv to have a nullptr at the end!
     ret[i].argv.push_back(nullptr);

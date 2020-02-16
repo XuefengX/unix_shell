@@ -13,8 +13,10 @@ Main features:
 1. run program
 2. redirection
 3. pipes
-4. builtins
-5. bells and whistles
+4. builtins: pwd, cd, exit, etc. 
+5. background exec
+6. tab completion
+7. support environment variables
 
 ```bash
 $ echo hello world > someFile
